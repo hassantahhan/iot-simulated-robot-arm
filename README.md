@@ -71,24 +71,6 @@ iot-simulated-robot-arm/
 
 ## How It Works
 
-### Data Flow
-
-```
-operator/shadow_controller.py ──HTTPS──▶ IoT Data Plane API ──MQTT──▶ device/robot_arm_simulator.py
-       (boto3, IAM creds)                  (updates Shadow)                    │
-                                                                               │
-    Browser (Viser at localhost:8099) ◀──WebSocket──┘                          │
-                                                                               │ MQTT publish
-                                                                               ▼
-                                                                         IoT Core
-                                                                               │
-                                                                  Rules Engine │
-                                                                               ▼
-                                                                       CloudWatch Logs
-                                                                               │
-    operator/query_telemetry.py ──HTTPS (boto3, IAM creds)─────────────────────┘
-```
-
 ### Step by step
 
 1. **Viser** serves a browser UI at `http://127.0.0.1:8099` (localhost only) with the SO-ARM101 3D model and 6 joint sliders.
