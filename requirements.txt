@@ -1,0 +1,5 @@
+viser==1.0.30
+yourdfpy==0.0.60
+numpy>=2.5.1
+boto3>=1.43.48
+awsiotsdk==1.30.0

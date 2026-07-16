@@ -1,0 +1,271 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  IoT infrastructure for the SO-ARM101 simulated robot arm.
+  Creates IoT Thing, Policy, Rules Engine to CloudWatch, and a CloudWatch Dashboard.
+
+Parameters:
+  ThingName:
+    Type: String
+    Default: soarm101
+    Description: Name of the IoT Thing (alphanumeric and underscores only for rule compatibility)
+
+Resources:
+  # --- IoT Thing ---
+  RobotArmThing:
+    Type: AWS::IoT::Thing
+    Properties:
+      ThingName: !Ref ThingName
+      AttributePayload:
+        Attributes:
+          model: SO-ARM101
+          dof: "6"
+          type: simulated
+
+  # --- IoT Policy ---
+  RobotArmPolicy:
+    Type: AWS::IoT::Policy
+    Properties:
+      PolicyName: !Sub "${ThingName}-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - iot:Connect
+            Resource:
+              - !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:client/${ThingName}*"
+          - Effect: Allow
+            Action:
+              - iot:Publish
+              - iot:Receive
+            Resource:
+              - !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/robot-arm/${ThingName}/*"
+              - !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/$aws/things/${ThingName}/shadow/*"
+          - Effect: Allow
+            Action:
+              - iot:Subscribe
+            Resource:
+              - !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/robot-arm/${ThingName}/*"
+              - !Sub "arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topicfilter/$aws/things/${ThingName}/shadow/*"
+
+  # --- CloudWatch Log Group for telemetry ---
+  TelemetryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/iot/robot-arm/${ThingName}/telemetry"
+      RetentionInDays: 30
+
+  # --- IAM Role for IoT Rules Engine ---
+  IoTRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ThingName}-iot-rule-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: iot.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !GetAtt TelemetryLogGroup.Arn
+                  - !Sub "${TelemetryLogGroup.Arn}:*"
+        - PolicyName: CloudWatchMetricsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+
+  # --- IoT Rule: Forward telemetry to CloudWatch Logs ---
+  TelemetryToLogsRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: !Sub "${ThingName}TelemetryToLogs"
+      TopicRulePayload:
+        Sql: !Sub "SELECT * FROM 'robot-arm/${ThingName}/telemetry'"
+        Actions:
+          - CloudwatchLogs:
+              LogGroupName: !Ref TelemetryLogGroup
+              RoleArn: !GetAtt IoTRuleRole.Arn
+        RuleDisabled: false
+
+  # --- CloudWatch Dashboard ---
+  RobotArmDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${ThingName}-dashboard"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "log",
+              "x": 0, "y": 0, "width": 24, "height": 8,
+              "properties": {
+                "title": "Recent Telemetry",
+                "region": "${AWS::Region}",
+                "query": "SOURCE '/iot/robot-arm/${ThingName}/telemetry' | fields @timestamp, joints.shoulder_pan.position as base_pos, joints.shoulder_pan.velocity as base_vel, joints.shoulder_pan.torque as base_torque, joints.shoulder_pan.temperature as base_temp, joints.shoulder_lift.position as shoulder_pos, joints.shoulder_lift.velocity as shoulder_vel, joints.shoulder_lift.torque as shoulder_torque, joints.shoulder_lift.temperature as shoulder_temp, joints.elbow_flex.position as elbow_pos, joints.elbow_flex.velocity as elbow_vel, joints.elbow_flex.torque as elbow_torque, joints.elbow_flex.temperature as elbow_temp, joints.wrist_flex.position as wrist_flex_pos, joints.wrist_flex.velocity as wrist_flex_vel, joints.wrist_flex.torque as wrist_flex_torque, joints.wrist_flex.temperature as wrist_flex_temp, joints.wrist_roll.position as wrist_roll_pos, joints.wrist_roll.velocity as wrist_roll_vel, joints.wrist_roll.torque as wrist_roll_torque, joints.wrist_roll.temperature as wrist_roll_temp, joints.gripper.position as gripper_pos, joints.gripper.velocity as gripper_vel, joints.gripper.torque as gripper_torque, joints.gripper.temperature as gripper_temp | sort @timestamp desc | limit 50"
+              }
+            }
+          ]
+        }
+
+  # --- Metric Filters: Extract joint temperatures from logs ---
+  TempFilterBase:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref TelemetryLogGroup
+      FilterPattern: '{ $.joints.shoulder_pan.temperature = * }'
+      MetricTransformations:
+        - MetricName: TempBase
+          MetricNamespace: !Sub "IoT/RobotArm/${ThingName}"
+          MetricValue: "$.joints.shoulder_pan.temperature"
+          DefaultValue: 25
+
+  TempFilterShoulder:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref TelemetryLogGroup
+      FilterPattern: '{ $.joints.shoulder_lift.temperature = * }'
+      MetricTransformations:
+        - MetricName: TempShoulder
+          MetricNamespace: !Sub "IoT/RobotArm/${ThingName}"
+          MetricValue: "$.joints.shoulder_lift.temperature"
+          DefaultValue: 25
+
+  TempFilterElbow:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref TelemetryLogGroup
+      FilterPattern: '{ $.joints.elbow_flex.temperature = * }'
+      MetricTransformations:
+        - MetricName: TempElbow
+          MetricNamespace: !Sub "IoT/RobotArm/${ThingName}"
+          MetricValue: "$.joints.elbow_flex.temperature"
+          DefaultValue: 25
+
+  TempFilterWristFlex:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref TelemetryLogGroup
+      FilterPattern: '{ $.joints.wrist_flex.temperature = * }'
+      MetricTransformations:
+        - MetricName: TempWristFlex
+          MetricNamespace: !Sub "IoT/RobotArm/${ThingName}"
+          MetricValue: "$.joints.wrist_flex.temperature"
+          DefaultValue: 25
+
+  TempFilterWristRoll:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref TelemetryLogGroup
+      FilterPattern: '{ $.joints.wrist_roll.temperature = * }'
+      MetricTransformations:
+        - MetricName: TempWristRoll
+          MetricNamespace: !Sub "IoT/RobotArm/${ThingName}"
+          MetricValue: "$.joints.wrist_roll.temperature"
+          DefaultValue: 25
+
+  TempFilterGripper:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref TelemetryLogGroup
+      FilterPattern: '{ $.joints.gripper.temperature = * }'
+      MetricTransformations:
+        - MetricName: TempGripper
+          MetricNamespace: !Sub "IoT/RobotArm/${ThingName}"
+          MetricValue: "$.joints.gripper.temperature"
+          DefaultValue: 25
+
+  # --- CloudWatch Alarm: Average temperature across all joints ---
+  HighTemperatureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ThingName}-avg-temp-high"
+      AlarmDescription: "Average temperature across all joints exceeds 29C for 1 minute"
+      EvaluationPeriods: 1
+      Threshold: 29
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Metrics:
+        - Id: base
+          MetricStat:
+            Metric:
+              Namespace: !Sub "IoT/RobotArm/${ThingName}"
+              MetricName: TempBase
+            Period: 60
+            Stat: Average
+          ReturnData: false
+        - Id: shoulder
+          MetricStat:
+            Metric:
+              Namespace: !Sub "IoT/RobotArm/${ThingName}"
+              MetricName: TempShoulder
+            Period: 60
+            Stat: Average
+          ReturnData: false
+        - Id: elbow
+          MetricStat:
+            Metric:
+              Namespace: !Sub "IoT/RobotArm/${ThingName}"
+              MetricName: TempElbow
+            Period: 60
+            Stat: Average
+          ReturnData: false
+        - Id: wrist_flex
+          MetricStat:
+            Metric:
+              Namespace: !Sub "IoT/RobotArm/${ThingName}"
+              MetricName: TempWristFlex
+            Period: 60
+            Stat: Average
+          ReturnData: false
+        - Id: wrist_roll
+          MetricStat:
+            Metric:
+              Namespace: !Sub "IoT/RobotArm/${ThingName}"
+              MetricName: TempWristRoll
+            Period: 60
+            Stat: Average
+          ReturnData: false
+        - Id: gripper
+          MetricStat:
+            Metric:
+              Namespace: !Sub "IoT/RobotArm/${ThingName}"
+              MetricName: TempGripper
+            Period: 60
+            Stat: Average
+          ReturnData: false
+        - Id: avg_temp
+          Expression: "(base + shoulder + elbow + wrist_flex + wrist_roll + gripper) / 6"
+          Label: "Average Joint Temperature"
+          ReturnData: true
+
+Outputs:
+  ThingName:
+    Value: !Ref RobotArmThing
+    Description: IoT Thing name
+
+  IoTEndpoint:
+    Description: "Run 'aws iot describe-endpoint --endpoint-type iot:Data-ATS' to get your endpoint"
+    Value: "See AWS CLI command above"
+
+  DashboardURL:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ThingName}-dashboard"
+    Description: CloudWatch Dashboard URL
+
+  AlarmURL:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#alarmsV2:alarm/${ThingName}-avg-temp-high"
+    Description: CloudWatch Alarm URL (average joint temperature)

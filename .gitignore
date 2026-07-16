@@ -1,0 +1,20 @@
+# Downloaded URDF and mesh assets
+device/urdf/
+
+# Generated IoT device certificates
+device/certs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+.kiro/
+
+# Environment variables
+.env
