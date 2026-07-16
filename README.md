@@ -5,26 +5,26 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
 ## Architecture Overview
 
 ```
-+-------------------------+                    +------------------+
-|  Viser (Browser UI)     |                    |   AWS IoT Core   |
-|    SO-ARM101 URDF       |                    |                  |
-| interactive sliders     |<------------------>|   MQTT Broker    |
-+-------------------------+    publishes       +---------+--------+
-                               signals                   |
-                                              +----------+----------+
-                                              |                     |
-                                     +--------v---------+  +--------v---------+
-                                     |  Device Shadow   |  |   Rules Engine   |
-                                     |                  |  |                  |
-                                     | desired/reported |  | Route telemetry  |
-                                     | joint states     |  | to CloudWatch    |
-                                     +------------------+  +--------+---------+
-                                                                    |
-                                                         +----------v-----------+
-                                                         | CloudWatch Dashboard |
-                                                         |   Metrics & Alarms   |
-                                                         +----------------------+
-```
++-------------------------+                    +-------------------+
+|  Viser (Browser UI)     |  MQTT telemetry    |   AWS IoT Core    |
+|    SO-ARM101 URDF       |------------------->|                   |
+| interactive sliders     |<-------------------|   MQTT Broker     |
++-------------------------+ MQTT delta events  +----+----------+---+
+                                                    |          |
+                                                    |          |
++-------------------------+            +------------v---+   +--v---------------+
+|  Operator CLI (boto3)   |  update    | Device Shadow  |   |   Rules Engine   |
+|                         |  desired   |                |   |                  |
+| shadow_controller.py    |----------->| desired/       |   | Route telemetry  |
+|                         |            | reported state |   | to CloudWatch    |
++-------------------------+            +----------------+   +---------+--------+
+                                                                      |
+                                                           +----------v----------+
+                                                           | CloudWatch          |
+                                                           | Dashboard, Logs,    |
+                                                           | Metrics & Alarms    |
+                                                           +---------------------+
+``` 
 
 ## Tech Stack
 
