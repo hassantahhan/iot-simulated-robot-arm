@@ -14,7 +14,7 @@ import time
 import boto3
 
 
-LOG_GROUP = "/iot/robot-arm/so-arm101/telemetry"
+LOG_GROUP = "/iot/robot-arm/soarm101/telemetry"
 
 
 def query_recent_telemetry(minutes: int = 10, limit: int = 50):

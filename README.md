@@ -149,6 +149,9 @@ python device/robot_arm_simulator.py
 # 7. Send commands via shadow controller (open a NEW terminal, activate venv first)
 .\.venv\Scripts\Activate.ps1
 python operator/shadow_controller.py --joint base --angle 45
+
+# 8. Query telemetry from CloudWatch (after simulator has been running)
+python operator/query_telemetry.py --minutes 60
 ```
 
 ### Bash (macOS / Linux)
@@ -180,6 +183,9 @@ python device/robot_arm_simulator.py
 # 7. Send commands via shadow controller (open a NEW terminal, activate venv first)
 source .venv/bin/activate
 python operator/shadow_controller.py --joint base --angle 45
+
+# 8. Query telemetry from CloudWatch (after simulator has been running)
+python operator/query_telemetry.py --minutes 60
 ```
 
 ## Prerequisites
