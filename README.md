@@ -40,18 +40,7 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
 | **AWS CloudFormation** | Infrastructure as code |
 | **AWS IAM** | Roles and policies for service permissions |
 
-## SO-ARM101 Joint Layout
-
-| Joint | Name | Function | Range |
-|-------|------|----------|-------|
-| 1 | Base rotation | Rotate arm left/right | -180° to +180° |
-| 2 | Shoulder | Tilt forward/back | -90° to +90° |
-| 3 | Elbow | Bend middle segment | -90° to +90° |
-| 4 | Wrist flex | Tilt end-effector up/down | -90° to +90° |
-| 5 | Wrist rotate | Roll end-effector | -180° to +180° |
-| 6 | Gripper | Open/close | 0° to +60° |
-
-## Business Value
+## Values Demonstrated
 
 - **Operational visibility** — A centralized dashboard gives operators real-time insight into arm position, velocity, and health without physical access.
 - **Remote control** — Device Shadow enables operators to send target poses from anywhere; the arm receives and executes them even if it was temporarily offline, with automatic state reconciliation on reconnect.
@@ -199,3 +188,5 @@ python operator/shadow_controller.py --joint base --angle 45
 - AWS CLI v2 installed and configured
 - Python 3.9+
 - IoT certificates (generated during stack deployment or manually via AWS console)
+
+This project was built with the help of [Kiro](https://kiro.dev)
