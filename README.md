@@ -7,10 +7,10 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
 ```
 +-------------------------+                    +------------------+
 |  Viser (Browser UI)     |                    |   AWS IoT Core   |
-|  SO-ARM101 URDF + 6     |    Python          |                  |
-|  interactive sliders     |<------------------>|   MQTT Broker    |
-+-------------------------+   publishes         +--------+---------+
-   You drag joints here       telemetry                  |
+|    SO-ARM101 URDF       |                    |                  |
+| interactive sliders     |<------------------>|   MQTT Broker    |
++-------------------------+    publishes       +---------+--------+
+                               signals                   |
                                               +----------+----------+
                                               |                     |
                                      +--------v---------+  +--------v---------+
@@ -22,7 +22,7 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
                                                                     |
                                                          +----------v-----------+
                                                          | CloudWatch Dashboard |
-                                                         | Metrics & Alarms     |
+                                                         |   Metrics & Alarms   |
                                                          +----------------------+
 ```
 
@@ -189,4 +189,4 @@ python operator/shadow_controller.py --joint base --angle 45
 - Python 3.9+
 - IoT certificates (generated during stack deployment or manually via AWS console)
 
-This project was built with the help of [Kiro](https://kiro.dev)
+This project was built with the help of [Kiro](https://kiro.dev).
