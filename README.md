@@ -48,6 +48,12 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
 - **Scalable pattern** — The architecture extends naturally to fleets of devices; add more arms without redesigning the backend.
 - **Sim-to-real ready** — Swap Viser for a real SO-ARM101 and the IoT pipeline stays identical. Same MQTT topics, same shadow schema, same dashboards.
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Messaging and Data Flow](docs/messaging.md) | How the simulator communicates with AWS IoT Core — topics, message formats, the command cycle, and naming conventions |
+
 ## Project Structure
 
 ```
