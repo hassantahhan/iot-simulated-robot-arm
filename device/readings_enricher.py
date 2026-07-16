@@ -7,10 +7,12 @@ from raw joint positions — mimicking what real servo sensors would report.
 import time
 import random
 
+from device_config import MQTT_CLIENT_ID
+
 class SimulatedSignals:
     """Produces realistic sensor readings from raw joint angles.
 
-    Real servos report position, velocity, torque (current draw),
+    A real servos motor reports position, velocity, torque (current draw),
     and temperature. This class derives those signals from position
     deltas and simple physics approximations.
     """
@@ -64,6 +66,6 @@ class SimulatedSignals:
 
         return {
             "timestamp": now,
-            "device_id": "so-arm101-simulator",
+            "device_id": MQTT_CLIENT_ID,
             "joints": joints_readings,
         }
