@@ -23,7 +23,10 @@ MQTT_ROOT_CA_FILE = os.path.join(_DIR, "certs", "AmazonRootCA1.pem")
 
 TOPIC_TELEMETRY = f"robot-arm/{THING_NAME}/telemetry"
 TOPIC_SHADOW_UPDATE = f"$aws/things/{THING_NAME}/shadow/update"
-TOPIC_SHADOW_DELTA = f"$aws/things/{THING_NAME}/shadow/update/delta"
+TOPIC_SHADOW_UPDATE_DELTA = f"$aws/things/{THING_NAME}/shadow/update/delta"
+TOPIC_SHADOW_GET = f"$aws/things/{THING_NAME}/shadow/get"
+TOPIC_SHADOW_GET_ACCEPTED = f"$aws/things/{THING_NAME}/shadow/get/accepted"
+TOPIC_SHADOW_GET_REJECTED = f"$aws/things/{THING_NAME}/shadow/get/rejected"
 
 
 # ─── Telemetry ─────────────────────────────────────────────────────────────────
