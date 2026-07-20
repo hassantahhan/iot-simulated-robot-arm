@@ -11,7 +11,9 @@ The simulator connects to AWS IoT Core using MQTT with mutual TLS authentication
 
 It also subscribes to **shadow delta** messages, which tell it when an operator has requested the arm to move somewhere new.
 
-## The three topics
+On startup, before subscribing to deltas, the simulator retrieves the full shadow document via a **shadow GET** request. This lets it restore the arm to its last known position and apply any commands that were sent while it was offline.
+
+## The topics
 
 ### Telemetry: `robot-arm/soarm101/telemetry`
 
@@ -127,6 +129,52 @@ The simulator subscribes to this topic. When a delta arrives, it means "the oper
 
 Once the simulator moves to the requested position and reports it back, the desired and reported states match, and IoT Core stops sending deltas. The system is at rest.
 
+### Shadow get: `$aws/things/soarm101/shadow/get`
+
+Another reserved AWS topic used to retrieve the full shadow document on demand.
+
+IoT Core responds on one of two topics:
+
+- **`$aws/things/soarm101/shadow/get/accepted`** — returns the full shadow document containing both reported and desired state.
+- **`$aws/things/soarm101/shadow/get/rejected`** — returned if the shadow doesn't exist yet (e.g., first boot before any state has been set).
+
+The accepted response looks like:
+
+```json
+{
+  "state": {
+    "desired": {
+      "base": 45.0
+    },
+    "reported": {
+      "base": 30.0,
+      "shoulder": -15.0,
+      "elbow": 0.0,
+      "wrist_flex": 45.0,
+      "wrist_rotate": 0.0,
+      "gripper": 20.0
+    }
+  },
+  "version": 42
+}
+```
+
+The simulator uses this to initialize joint positions from the reported state (where the arm was before shutdown) and to apply any desired values that differ from reported (commands sent while offline).
+
+## The startup sequence
+
+When the simulator starts (or reconnects after being offline), it goes through this sequence before accepting live commands:
+
+1. Connect to IoT Core via MQTT with device certificates.
+2. Subscribe to `shadow/get/accepted` and `shadow/get/rejected`.
+3. Publish `{}` to `shadow/get` — asking IoT Core for the full shadow document.
+4. Receive the response. Initialize joints from the **reported** state (last actual position). Then check for any **desired** values that differ from reported — these are commands sent while the arm was offline — and apply them.
+5. Clear all desired keys by publishing them as `null`. This marks them as consumed and prevents stale deltas from firing.
+6. Publish the current reported state (so the shadow reflects the arm's actual position).
+7. Subscribe to `shadow/update/delta` for live commands.
+
+After this sequence, the arm is at its last known position (or at the position requested by an offline command), and ready to receive new commands via delta.
+
 ## The full command cycle
 
 Here's what happens end-to-end when an operator tells the arm to move:
@@ -137,11 +185,13 @@ Here's what happens end-to-end when an operator tells the arm to move:
 
 3. The simulator receives the delta over its MQTT subscription. It converts 45 degrees to radians and moves the joint slider in the 3D visualization.
 
-4. On the next telemetry cycle (within one second), the simulator publishes the updated reported state (`base: 45.0`) to the shadow. IoT Core sees that desired now matches reported, and the delta clears.
+4. The simulator clears the desired key by publishing it as `null`. This marks the command as consumed — regardless of whether the arm reached the exact target (e.g., joint limits may clamp the position).
 
-5. Meanwhile, the full telemetry payload (with all sensor readings) is also published to the telemetry topic and routed to CloudWatch for monitoring.
+5. On the next telemetry cycle (within one second), the simulator publishes the updated reported state (`base: 45.0`) to the shadow.
 
-This pattern means the arm can be offline when the operator sends a command. The desired state persists in the shadow. When the arm reconnects, it receives the delta and catches up automatically.
+6. Meanwhile, the full telemetry payload (with all sensor readings) is also published to the telemetry topic and routed to CloudWatch for monitoring.
+
+This pattern means the arm can be offline when the operator sends a command. The desired state persists in the shadow. When the arm reconnects, its startup sequence (described above) retrieves the shadow, sees the pending desired state differs from reported, applies it, and then clears it.
 
 ## Why two different naming schemes
 
