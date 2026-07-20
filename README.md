@@ -5,11 +5,11 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
 ## Architecture Overview
 
 ```
-+-------------------------+                    +-------------------+
-|  Viser (Browser UI)     |  MQTT telemetry    |   AWS IoT Core    |
++-------------------------+    report state    +-------------------+
+|  Viser (Browser UI)     |  report telemetry  |   AWS IoT Core    |
 |    SO-ARM101 URDF       |------------------->|                   |
 | interactive sliders     |<-------------------|   MQTT Broker     |
-+-------------------------+ MQTT delta events  +----+----------+---+
++-------------------------+    shadow delta    +----+----------+---+
                                                     |          |
                                                     |          |
 +-------------------------+            +------------v---+   +--v---------------+
