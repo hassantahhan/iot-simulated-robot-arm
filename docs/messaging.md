@@ -72,7 +72,7 @@ Each joint includes:
 
 - **position** — the current angle in radians.
 - **velocity** — how fast the joint is moving, in radians per second. Derived from the change in position over time.
-- **torque** — a simulated approximation of how hard the motor is working. In a real servo this would correlate with current draw.
+- **torque** — a simulated approximation of how hard the motor is working. In a real servo motor, this would correlate with current draw.
 - **temperature** — the simulated motor temperature in degrees Celsius. It rises under sustained load and slowly cools back toward 25°C ambient.
 
 ### Shadow update: `$aws/things/soarm101/shadow/update`
@@ -221,3 +221,43 @@ They serve different purposes with different consumers:
 **Shadow** is a single-value state document — it always reflects "right now." It gets overwritten every cycle. Its job is to enable command-and-control: letting an operator say "go here" and letting the device confirm "I'm there." It doesn't store history and it doesn't carry sensor richness like torque or temperature.
 
 You could collapse them into one message, but then either your shadow gets bloated with data IoT Core doesn't need for state comparison, or your analytics pipeline loses the detailed sensor readings it cares about.
+
+## Topic reference
+
+This section lists every MQTT topic relevant to this project — the custom telemetry topic and all native Device Shadow topics that AWS IoT Core provides for a classic (unnamed) shadow. Some are used in this project, others exist in the protocol but aren't needed here.
+
+### Custom topic
+
+| Topic | Direction | When to use |
+|-------|-----------|-------------|
+| `robot-arm/soarm101/telemetry` | Device → Cloud | Continuous sensor data stream. Publish rich readings (position, velocity, torque, temperature) for dashboards, analytics, and alerting. IoT Core routes it via Rules Engine — it has no built-in meaning. |
+
+### Shadow topics — update family
+
+| Topic | Direction | When to use | Used? |
+|-------|-----------|-------------|-------|
+| `$aws/things/{thing}/shadow/update` | Device/Operator → IoT Core | Publish reported state (device) or desired state (operator) to modify the shadow document. | Yes |
+| `$aws/things/{thing}/shadow/update/accepted` | IoT Core → Device | Subscribe to confirm your update was accepted. Useful for retry logic or audit trails. | No |
+| `$aws/things/{thing}/shadow/update/rejected` | IoT Core → Device | Subscribe to detect failed updates (e.g., version conflicts, malformed payloads). Without this you silently drop errors. | No |
+| `$aws/things/{thing}/shadow/update/delta` | IoT Core → Device | Subscribe to receive commands. IoT Core auto-publishes here when desired differs from reported. This is how the device learns it needs to move. | Yes |
+| `$aws/things/{thing}/shadow/update/documents` | IoT Core → Device | Subscribe to get the full shadow document (previous + current) after every successful update. Useful for debugging or building a local cache of the complete state. | No |
+
+### Shadow topics — get family
+
+| Topic | Direction | When to use | Used? |
+|-------|-----------|-------------|-------|
+| `$aws/things/{thing}/shadow/get` | Device → IoT Core | Publish `{}` to request the full shadow document on demand. Typically used at startup to restore last known state. | Yes |
+| `$aws/things/{thing}/shadow/get/accepted` | IoT Core → Device | Subscribe to receive the full shadow document in response to a get request. Contains both reported and desired state. | Yes |
+| `$aws/things/{thing}/shadow/get/rejected` | IoT Core → Device | Subscribe to handle the case where the shadow doesn't exist yet (first boot). Without this, the device would hang waiting for an accepted response that never comes. | Yes |
+
+### Shadow topics — delete family
+
+| Topic | Direction | When to use | Used? |
+|-------|-----------|-------------|-------|
+| `$aws/things/{thing}/shadow/delete` | Device/Operator → IoT Core | Publish `{}` to completely erase the shadow document. Use for factory reset, decommissioning, or clearing a corrupted shadow. | No |
+| `$aws/things/{thing}/shadow/delete/accepted` | IoT Core → Device | Subscribe to confirm the shadow was successfully deleted. | No |
+| `$aws/things/{thing}/shadow/delete/rejected` | IoT Core → Device | Subscribe to handle deletion failures (e.g., shadow doesn't exist). | No |
+
+### Why we don't use all of them
+
+This project keeps things simple. The simulator does fire-and-forget on its shadow updates — it publishes reported state every second, so even if one update is rejected, the next one will correct it. Subscribing to `update/accepted` and `update/rejected` would add robustness (retry logic, error alerting) but isn't necessary for a demo. The delete family is an operational tool — you'd use it from the AWS Console or a management script, not from the device's normal runtime loop.
