@@ -49,18 +49,6 @@ FRIENDLY_TO_URDF = {
 URDF_TO_FRIENDLY = {v: k for k, v in FRIENDLY_TO_URDF.items()}
 
 
-# ─── Joint Limits (degrees) ───────────────────────────────────────────────────
-
-JOINT_LIMITS = {
-    "base": {"min": -180.0, "max": 180.0, "initial": 0.0},
-    "shoulder": {"min": -90.0, "max": 90.0, "initial": 0.0},
-    "elbow": {"min": -90.0, "max": 90.0, "initial": 0.0},
-    "wrist_flex": {"min": -90.0, "max": 90.0, "initial": 0.0},
-    "wrist_rotate": {"min": -180.0, "max": 180.0, "initial": 0.0},
-    "gripper": {"min": 0.0, "max": 60.0, "initial": 0.0},
-}
-
-
 # ─── Visualizer (Viser) ───────────────────────────────────────────────────────
 
 VISER_HOST = "127.0.0.1"
