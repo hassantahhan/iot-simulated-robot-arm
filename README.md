@@ -178,10 +178,9 @@ python operator/query_telemetry.py --minutes 60
 
 ## Prerequisites
 
-- AWS Account with appropriate permissions
-- AWS CLI v2 installed and configured
 - Python 3.9+
-- IoT certificates (generated during stack deployment or manually via AWS console)
+- AWS CLI v2 installed and configured
+- AWS Account with appropriate permissions (see below)
 
 ## IAM Permissions Required
 
@@ -193,15 +192,15 @@ The **operator** scripts use IAM credentials (via boto3). The IAM principal runn
 
 | Action | Resource |
 |--------|----------|
-| `iot:UpdateThingShadow` | `arn:aws:iot:<region>:<account-id>:thing/soarm101` |
-| `iot:GetThingShadow` | `arn:aws:iot:<region>:<account-id>:thing/soarm101` |
+| `iot:UpdateThingShadow` | `arn:aws:iot:<region>:<account-id>:thing/*` |
+| `iot:GetThingShadow` | `arn:aws:iot:<region>:<account-id>:thing/*` |
 
 ### query_telemetry.py
 
 | Action | Resource |
 |--------|----------|
-| `logs:StartQuery` | `arn:aws:logs:<region>:<account-id>:log-group:/iot/robot-arm/soarm101/telemetry:*` |
-| `logs:GetQueryResults` | `*` (query results are not scoped to a specific log group) |
+| `logs:StartQuery` | `*` |
+| `logs:GetQueryResults` | `*` |
 
 ### setup_certs.py (one-time setup)
 
@@ -209,7 +208,7 @@ The **operator** scripts use IAM credentials (via boto3). The IAM principal runn
 |--------|----------|
 | `iot:DescribeEndpoint` | `*` |
 | `iot:CreateKeysAndCertificate` | `*` |
-| `iot:AttachThingPrincipal` | `arn:aws:iot:<region>:<account-id>:thing/soarm101` |
+| `iot:AttachThingPrincipal` | `arn:aws:iot:<region>:<account-id>:thing/*` |
 | `iot:AttachPolicy` | `arn:aws:iot:<region>:<account-id>:cert/*` |
 
 ### CloudFormation deployment
