@@ -183,4 +183,45 @@ python operator/query_telemetry.py --minutes 60
 - Python 3.9+
 - IoT certificates (generated during stack deployment or manually via AWS console)
 
+## IAM Permissions Required
+
+The **device** authenticates with X.509 certificates — it does not need IAM credentials. The IoT Policy (`soarm101-policy`, created by CloudFormation) grants it MQTT access.
+
+The **operator** scripts use IAM credentials (via boto3). The IAM principal running these scripts needs the following permissions:
+
+### shadow_controller.py
+
+| Action | Resource |
+|--------|----------|
+| `iot:UpdateThingShadow` | `arn:aws:iot:<region>:<account-id>:thing/soarm101` |
+| `iot:GetThingShadow` | `arn:aws:iot:<region>:<account-id>:thing/soarm101` |
+
+### query_telemetry.py
+
+| Action | Resource |
+|--------|----------|
+| `logs:StartQuery` | `arn:aws:logs:<region>:<account-id>:log-group:/iot/robot-arm/soarm101/telemetry:*` |
+| `logs:GetQueryResults` | `*` (query results are not scoped to a specific log group) |
+
+### setup_certs.py (one-time setup)
+
+| Action | Resource |
+|--------|----------|
+| `iot:DescribeEndpoint` | `*` |
+| `iot:CreateKeysAndCertificate` | `*` |
+| `iot:AttachThingPrincipal` | `arn:aws:iot:<region>:<account-id>:thing/soarm101` |
+| `iot:AttachPolicy` | `arn:aws:iot:<region>:<account-id>:cert/*` |
+
+### CloudFormation deployment
+
+| Action | Resource |
+|--------|----------|
+| `cloudformation:*` | The stack |
+| `iot:*` | Thing, Policy, TopicRule resources |
+| `iam:CreateRole`, `iam:PutRolePolicy`, `iam:PassRole` | The Rules Engine role |
+| `logs:CreateLogGroup`, `logs:PutMetricFilter` | Telemetry log group |
+| `cloudwatch:PutDashboard`, `cloudwatch:PutMetricAlarm` | Dashboard and alarm |
+
+These are not provisioned by the stack — they depend on your AWS account's existing IAM users or roles.
+
 This project was built with the help of [Kiro](https://kiro.dev).
