@@ -45,7 +45,7 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
 - **Operational visibility** — A centralized dashboard gives operators real-time insight into arm position, velocity, and health without physical access.
 - **Remote control** — Device Shadow enables operators to send target poses from anywhere; the arm receives and executes them even if it was temporarily offline, with automatic state reconciliation on reconnect.
 - **Predictive maintenance** — CloudWatch alarms detect abnormal joint temperatures or positions early, reducing unplanned downtime.
-- **Scalable pattern** — The architecture extends naturally to fleets of devices; add more arms without redesigning the backend.
+- **Secure IoT identity** — The device authenticates with unique X.509 certificates and TLS mutual authentication, ensuring only authorized arms connect to the cloud backend.
 - **Sim-to-real ready** — Swap Viser for a real SO-ARM101 and the IoT pipeline stays identical. Same MQTT topics, same shadow schema, same dashboards.
 
 ## Documentation
