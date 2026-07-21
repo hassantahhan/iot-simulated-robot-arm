@@ -7,17 +7,19 @@ Usage:
     python operator/shadow_controller.py --joint base=45
     python operator/shadow_controller.py --joint base=30 shoulder=-15 elbow=45
     python operator/shadow_controller.py --get
+    python operator/shadow_controller.py --region us-east-1 --joint base=45
 """
 
 import argparse
 import json
+import os
 import sys
 
 import boto3
 
 
 THING_NAME = "soarm101"
-REGION = "ap-southeast-2"
+DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-2")
 
 VALID_JOINTS = {"base", "shoulder", "elbow", "wrist_flex", "wrist_rotate", "gripper"}
 
@@ -45,9 +47,9 @@ def parse_joint_pair(pair: str) -> tuple[str, float]:
     return name, angle
 
 
-def update_shadow(desired_state: dict):
+def update_shadow(desired_state: dict, region: str):
     """Update the device shadow's desired state via IoT Data Plane API."""
-    client = boto3.client("iot-data", region_name=REGION)
+    client = boto3.client("iot-data", region_name=region)
 
     shadow_doc = {"state": {"desired": desired_state}}
     payload = json.dumps(shadow_doc)
@@ -59,9 +61,9 @@ def update_shadow(desired_state: dict):
     print(f"[INFO] Shadow updated with desired state: {desired_state}")
 
 
-def get_shadow():
+def get_shadow(region: str):
     """Retrieve the current device shadow state."""
-    client = boto3.client("iot-data", region_name=REGION)
+    client = boto3.client("iot-data", region_name=region)
 
     response = client.get_thing_shadow(thingName=THING_NAME)
     shadow = json.loads(response["payload"].read())
@@ -82,6 +84,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
+        "--region",
+        default=DEFAULT_REGION,
+        help=f"AWS region (default: {DEFAULT_REGION})",
+    )
+    parser.add_argument(
         "--joint",
         nargs="+",
         metavar="NAME=ANGLE",
@@ -91,7 +98,7 @@ def main():
     args = parser.parse_args()
 
     if args.get:
-        shadow = get_shadow()
+        shadow = get_shadow(args.region)
         print(json.dumps(shadow, indent=2))
         return
 
@@ -104,7 +111,7 @@ def main():
         name, angle = parse_joint_pair(pair)
         desired[name] = angle
 
-    update_shadow(desired)
+    update_shadow(desired, args.region)
     print("[INFO] Done.")
 
 

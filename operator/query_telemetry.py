@@ -3,23 +3,26 @@
 Fetches recent telemetry from CloudWatch Logs Insights and displays it.
 
 Usage:
-    python dashboard/query_telemetry.py
-    python dashboard/query_telemetry.py --minutes 30
+    python operator/query_telemetry.py
+    python operator/query_telemetry.py --minutes 30
+    python operator/query_telemetry.py --region us-east-1
 """
 
 import argparse
 import json
+import os
 import time
 
 import boto3
 
 
 LOG_GROUP = "/iot/robot-arm/soarm101/telemetry"
+DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION", "ap-southeast-2")
 
 
-def query_recent_telemetry(minutes: int = 10, limit: int = 50):
+def query_recent_telemetry(minutes: int = 10, limit: int = 50, region: str = DEFAULT_REGION):
     """Query CloudWatch Logs Insights for recent telemetry."""
-    client = boto3.client("logs")
+    client = boto3.client("logs", region_name=region)
 
     end_time = int(time.time())
     start_time = end_time - (minutes * 60)
@@ -78,11 +81,12 @@ def query_recent_telemetry(minutes: int = 10, limit: int = 50):
 
 def main():
     parser = argparse.ArgumentParser(description="Query SO-ARM101 telemetry from CloudWatch")
+    parser.add_argument("--region", default=DEFAULT_REGION, help=f"AWS region (default: {DEFAULT_REGION})")
     parser.add_argument("--minutes", type=int, default=10, help="How many minutes back to query")
     parser.add_argument("--limit", type=int, default=50, help="Max records to return")
     args = parser.parse_args()
 
-    query_recent_telemetry(minutes=args.minutes, limit=args.limit)
+    query_recent_telemetry(minutes=args.minutes, limit=args.limit, region=args.region)
 
 
 if __name__ == "__main__":
