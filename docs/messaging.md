@@ -7,7 +7,7 @@ This document explains how the SO-ARM101 simulator communicates with AWS IoT Cor
 The simulator connects to AWS IoT Core using MQTT with mutual TLS authentication (device certificates). Once connected, it does two things on a loop every second:
 
 1. Publishes **telemetry** — a rich set of sensor readings for each joint (position, velocity, torque, temperature).
-2. Publishes the **shadow reported state** — a simple summary of where each joint currently is, used for the command-and-control flow.
+2. Publishes the **reported state** — a simple summary of where each joint currently is, used for the command-and-control flow.
 
 It also subscribes to **shadow delta** messages, which tell it when an operator has requested the arm to move somewhere new.
 
@@ -179,7 +179,7 @@ After this sequence, the arm is at its last known position (or at the position r
 
 Here's what happens end-to-end when an operator tells the arm to move:
 
-1. The operator runs `shadow_controller.py --joint base --angle 45`. This calls the IoT Data Plane API (over HTTPS, not MQTT) to write the desired state into the shadow document.
+1. The operator runs `shadow_controller.py --joint base=45`. This calls the IoT Data Plane API (over HTTPS, not MQTT) to write the desired state into the shadow document.
 
 2. IoT Core sees that the shadow's desired state (`base: 45`) doesn't match the reported state (`base: 0`). It publishes a delta message to the delta topic.
 
@@ -224,15 +224,15 @@ You could collapse them into one message, but then either your shadow gets bloat
 
 ## Topic reference
 
-This section lists every MQTT topic relevant to this project — the custom telemetry topic and all native Device Shadow topics that AWS IoT Core provides for a classic (unnamed) shadow. Some are used in this project, others exist in the protocol but aren't needed here.
+This section lists every MQTT topic relevant to this project: the custom telemetry topic and all native Device Shadow topics that AWS IoT Core provides. Some are used in this project, others exist in the protocol but aren't needed here.
 
-### Custom topic
+### Custom telemetry topic
 
 | Topic | Direction | When to use |
 |-------|-----------|-------------|
-| `robot-arm/soarm101/telemetry` | Device → Cloud | Continuous sensor data stream. Publish rich readings (position, velocity, torque, temperature) for dashboards, analytics, and alerting. IoT Core routes it via Rules Engine — it has no built-in meaning. |
+| `robot-arm/soarm101/telemetry` | Device → Cloud | Continuous sensor data stream. Publish raw readings (position, velocity, torque, temperature) for dashboards, analytics, and alerting. IoT Core routes it via Rules Engine to CloudWatch. |
 
-### Shadow topics — update family
+### Shadow update topics
 
 | Topic | Direction | When to use | Used? |
 |-------|-----------|-------------|-------|
@@ -242,7 +242,7 @@ This section lists every MQTT topic relevant to this project — the custom tele
 | `$aws/things/{thing}/shadow/update/delta` | IoT Core → Device | Subscribe to receive commands. IoT Core auto-publishes here when desired differs from reported. This is how the device learns it needs to move. | Yes |
 | `$aws/things/{thing}/shadow/update/documents` | IoT Core → Device | Subscribe to get the full shadow document (previous + current) after every successful update. Useful for debugging or building a local cache of the complete state. | No |
 
-### Shadow topics — get family
+### Shadow get topics
 
 | Topic | Direction | When to use | Used? |
 |-------|-----------|-------------|-------|
@@ -250,7 +250,7 @@ This section lists every MQTT topic relevant to this project — the custom tele
 | `$aws/things/{thing}/shadow/get/accepted` | IoT Core → Device | Subscribe to receive the full shadow document in response to a get request. Contains both reported and desired state. | Yes |
 | `$aws/things/{thing}/shadow/get/rejected` | IoT Core → Device | Subscribe to handle the case where the shadow doesn't exist yet (first boot). Without this, the device would hang waiting for an accepted response that never comes. | Yes |
 
-### Shadow topics — delete family
+### Shadow delete topics
 
 | Topic | Direction | When to use | Used? |
 |-------|-----------|-------------|-------|
@@ -260,4 +260,4 @@ This section lists every MQTT topic relevant to this project — the custom tele
 
 ### Why we don't use all of them
 
-This project keeps things simple. The simulator does fire-and-forget on its shadow updates — it publishes reported state every second, so even if one update is rejected, the next one will correct it. Subscribing to `update/accepted` and `update/rejected` would add robustness (retry logic, error alerting) but isn't necessary for a demo. The delete family is an operational tool — you'd use it from the AWS Console or a management script, not from the device's normal runtime loop.
+This project keeps things simple. The simulator does fire-and-forget on its shadow updates. It publishes reported state every second, so even if one update is rejected, the next one will correct it. Subscribing to `update/accepted` and `update/rejected` would add robustness (retry logic, error alerting) but isn't necessary for this project. The delete family is an operational tool — you'd use it from the AWS Console or a management script, not from the device's normal runtime loop.
