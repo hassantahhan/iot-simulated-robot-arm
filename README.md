@@ -186,7 +186,26 @@ python operator/query_telemetry.py --minutes 60
 
 The **device** authenticates with X.509 certificates — it does not need IAM credentials. The IoT Policy (`soarm101-policy`, created by CloudFormation) grants it MQTT access.
 
-The **operator** scripts use IAM credentials (via boto3). The IAM principal running these scripts needs the following permissions:
+The setup and **operator** scripts use IAM credentials. The IAM principal running these scripts needs the following permissions:
+
+### CloudFormation deployment
+
+| Action | Resource |
+|--------|----------|
+| `cloudformation:*` | The stack |
+| `iot:*` | Thing, Policy, TopicRule resources |
+| `iam:CreateRole`, `iam:PutRolePolicy`, `iam:PassRole` | The Rules Engine role |
+| `logs:CreateLogGroup`, `logs:PutMetricFilter` | Telemetry log group |
+| `cloudwatch:PutDashboard`, `cloudwatch:PutMetricAlarm` | Dashboard and alarm |
+
+### setup_certs.py (one-time setup)
+
+| Action | Resource |
+|--------|----------|
+| `iot:DescribeEndpoint` | `*` |
+| `iot:CreateKeysAndCertificate` | `*` |
+| `iot:AttachThingPrincipal` | `arn:aws:iot:<region>:<account-id>:thing/*` |
+| `iot:AttachPolicy` | `arn:aws:iot:<region>:<account-id>:cert/*` |
 
 ### shadow_controller.py
 
@@ -202,25 +221,6 @@ The **operator** scripts use IAM credentials (via boto3). The IAM principal runn
 | `logs:StartQuery` | `*` |
 | `logs:GetQueryResults` | `*` |
 
-### setup_certs.py (one-time setup)
-
-| Action | Resource |
-|--------|----------|
-| `iot:DescribeEndpoint` | `*` |
-| `iot:CreateKeysAndCertificate` | `*` |
-| `iot:AttachThingPrincipal` | `arn:aws:iot:<region>:<account-id>:thing/*` |
-| `iot:AttachPolicy` | `arn:aws:iot:<region>:<account-id>:cert/*` |
-
-### CloudFormation deployment
-
-| Action | Resource |
-|--------|----------|
-| `cloudformation:*` | The stack |
-| `iot:*` | Thing, Policy, TopicRule resources |
-| `iam:CreateRole`, `iam:PutRolePolicy`, `iam:PassRole` | The Rules Engine role |
-| `logs:CreateLogGroup`, `logs:PutMetricFilter` | Telemetry log group |
-| `cloudwatch:PutDashboard`, `cloudwatch:PutMetricAlarm` | Dashboard and alarm |
-
-These are not provisioned by the stack — they depend on your AWS account's existing IAM users or roles.
+These permissions are not provisioned by the CloudFormation stack. They depend on your AWS account's existing IAM users or roles.
 
 This project was built with the help of [Kiro](https://kiro.dev).
