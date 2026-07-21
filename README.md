@@ -48,29 +48,6 @@ A simulated **SO-ARM101** robot arm visualized with **Viser** (browser-based 3D)
 - **Secure IoT identity** — The device authenticates with unique X.509 certificates and TLS mutual authentication, ensuring only authorized arms connect to the cloud backend.
 - **Sim-to-real ready** — Swap Viser for a real SO-ARM101 and the IoT pipeline stays identical. Same MQTT topics, same shadow schema, same dashboards.
 
-## Project Structure
-
-```
-iot-simulated-robot-arm/
-├── README.md
-├── requirements.txt
-├── docs/                                # Project documentation
-│   ├── setup.md                         #   Prerequisites, setup steps
-│   └── messaging.md                     #   MQTT topics, message formats, data flow
-├── setup/                               # One-time provisioning (run once)
-│   ├── cfn-template.yaml                #   CloudFormation (IoT, Rules, CloudWatch)
-│   ├── setup_certs.py                   #   Creates IoT certificates & configures endpoint
-│   └── setup_urdf.py                    #   Downloads SO-ARM101 URDF & meshes from GitHub
-├── device/                              # Simulated device runtime (the "robot arm")
-│   ├── robot_arm_simulator.py           #   Viser 3D UI + MQTT publish loop
-│   ├── readings_enricher.py             #   Simulated signals (velocity, torque, temp)
-│   ├── device_config.py                 #   MQTT endpoint, cert paths, topics, joint mapping
-│   ├── certs/                           #   Device certificates & private key (git-ignored)
-│   └── urdf/so101/                      #   Downloaded URDF + STL meshes (git-ignored)
-└── operator/                            # Remote operator tools (cloud-side, uses IAM/certs)
-    ├── shadow_controller.py             #   Send desired joint angles via Device Shadow (MQTT)
-    └── query_telemetry.py               #   Query stored telemetry from CloudWatch (boto3)
-```
 
 ## How It Works
 
@@ -103,7 +80,33 @@ iot-simulated-robot-arm/
 |--------|------------|-------------|---------|
 | `robot_arm_simulator.py` | **IoT Core** (MQTT) | Device certificate + private key | Publishes telemetry, receives shadow deltas |
 
+## Project Structure
+
+```
+iot-simulated-robot-arm/
+├── README.md
+├── requirements.txt
+├── docs/                                # Project documentation
+│   ├── setup.md                         #   Prerequisites, setup steps
+│   └── messaging.md                     #   MQTT topics, message formats, data flow
+├── setup/                               # One-time provisioning (run once)
+│   ├── cfn-template.yaml                #   CloudFormation (IoT, Rules, CloudWatch)
+│   ├── setup_certs.py                   #   Creates IoT certificates & configures endpoint
+│   └── setup_urdf.py                    #   Downloads SO-ARM101 URDF & meshes from GitHub
+├── device/                              # Simulated device runtime (the "robot arm")
+│   ├── robot_arm_simulator.py           #   Viser 3D UI + MQTT publish loop
+│   ├── readings_enricher.py             #   Simulated signals (velocity, torque, temp)
+│   ├── device_config.py                 #   MQTT endpoint, cert paths, topics, joint mapping
+│   ├── certs/                           #   Device certificates & private key (git-ignored)
+│   └── urdf/so101/                      #   Downloaded URDF + STL meshes (git-ignored)
+└── operator/                            # Remote operator tools (cloud-side, uses IAM/certs)
+    ├── shadow_controller.py             #   Send desired joint angles via Device Shadow (MQTT)
+    └── query_telemetry.py               #   Query stored telemetry from CloudWatch (boto3)
+```
+
 ## Documentation
+
+Further documentation lives in the [`docs/`](docs/) folder.
 
 | Document | Description |
 |----------|-------------|
